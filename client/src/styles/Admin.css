@@ -1,0 +1,402 @@
+@import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+    --gold: #D4AF37;
+    --gold-dark: #B8941F;
+    --gold-light: #E8C547;
+    --bg: #0A0E14;
+    --bg-elevated: #12161D;
+    --surface: #1A1F28;
+    --border: rgba(255,255,255,0.08);
+    --border-subtle: rgba(255,255,255,0.04);
+    --text: #FFFFFF;
+    --text-secondary: #A8B2C1;
+    --text-muted: #6B7785;
+    --green: #10B981;
+    --red: #EF4444;
+    --blue: #3B82F6;
+}
+
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+.admin-container {
+    min-height: 100vh;
+    background: var(--bg);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: var(--text);
+    padding: clamp(24px, 4vw, 48px);
+    position: relative;
+}
+
+/* Subtle grid background */
+.admin-container::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+        linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+    background-size: 50px 50px;
+    opacity: 0.4;
+}
+
+/* Header */
+.admin-header {
+    position: relative;
+    margin-bottom: 48px;
+    opacity: 0;
+    transform: translateY(-10px);
+    animation: fadeInDown 0.6s ease forwards;
+}
+
+@keyframes fadeInDown {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.admin-header h1 {
+    font-family: 'Libre Baskerville', serif;
+    font-size: clamp(28px, 4vw, 42px);
+    font-weight: 400;
+    color: var(--text);
+    margin-bottom: 8px;
+    letter-spacing: -0.02em;
+}
+
+.admin-header h1 span {
+    font-style: italic;
+    color: var(--gold);
+}
+
+.admin-header p {
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--text-muted);
+    letter-spacing: 0.01em;
+}
+
+/* Cards Grid */
+.admin-grid {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+    gap: 24px;
+    max-width: 1400px;
+}
+
+.admin-card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: clamp(28px, 3.5vw, 40px);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+    opacity: 0;
+    transform: translateY(20px);
+    animation: fadeInUp 0.7s ease forwards;
+    animation-delay: calc(var(--card-index, 0) * 0.1s);
+}
+
+@keyframes fadeInUp {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.admin-card h2 {
+    font-family: 'Libre Baskerville', serif;
+    font-size: clamp(20px, 2vw, 24px);
+    font-weight: 400;
+    color: var(--text);
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+/* Form Styling */
+.admin-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-label {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.admin-form input,
+.admin-form select {
+    width: 100%;
+    padding: 13px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--text);
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.admin-form input::placeholder {
+    color: var(--text-muted);
+    font-weight: 400;
+}
+
+.admin-form input:focus,
+.admin-form select:focus {
+    border-color: var(--gold);
+    background: var(--bg-elevated);
+    box-shadow: 0 0 0 3px rgba(212,175,55,0.1);
+}
+
+.admin-form select {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L6 6L11 1' stroke='%23A8B2C1' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 16px center;
+    padding-right: 44px;
+}
+
+.admin-form select option {
+    background: var(--surface);
+    color: var(--text);
+}
+
+.admin-btn {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 8px;
+    background: var(--gold);
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #000000;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-top: 4px;
+}
+
+.admin-btn:hover:not(:disabled) {
+    background: var(--gold-light);
+    transform: translateY(-1px);
+    box-shadow: 0 8px 24px rgba(212,175,55,0.25);
+}
+
+.admin-btn:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.admin-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Table Styling */
+.user-table-container {
+    overflow-x: auto;
+    margin-top: 8px;
+}
+
+.user-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 13px;
+}
+
+.user-table thead th {
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    text-align: left;
+    padding: 14px 16px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+}
+
+.user-table tbody tr {
+    transition: background 0.15s ease;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.user-table tbody tr:hover {
+    background: rgba(255,255,255,0.02);
+}
+
+.user-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.user-table tbody td {
+    padding: 16px;
+    color: var(--text-secondary);
+    font-weight: 400;
+}
+
+/* Role badges */
+.role-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.role-badge.ADMIN {
+    background: rgba(212,175,55,0.15);
+    color: var(--gold);
+}
+
+.role-badge.HOD {
+    background: rgba(59,130,246,0.15);
+    color: var(--blue);
+}
+
+.role-badge.CEO {
+    background: rgba(239,68,68,0.15);
+    color: var(--red);
+}
+
+/* Status indicator */
+.status-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+
+.status-dot.active {
+    background: var(--green);
+    box-shadow: 0 0 8px rgba(16,185,129,0.5);
+}
+
+.status-dot.inactive {
+    background: var(--text-muted);
+}
+
+/* Empty state */
+.empty-state {
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--text-muted);
+}
+
+.empty-state-icon {
+    font-size: 36px;
+    margin-bottom: 12px;
+    opacity: 0.3;
+}
+
+.empty-state p {
+    font-size: 14px;
+    font-weight: 400;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+    .admin-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .admin-container {
+        padding: 24px 20px;
+    }
+}
+
+@media (max-width: 480px) {
+    .admin-card {
+        padding: 24px 18px;
+        border-radius: 10px;
+    }
+    
+    .user-table {
+        font-size: 12px;
+    }
+    
+    .user-table thead th,
+    .user-table tbody td {
+        padding: 12px 10px;
+    }
+    
+    .admin-form {
+        gap: 16px;
+    }
+}
+
+/* ── ASSIGN BUTTON ── */
+.assign-btn {
+  padding: 7px 14px;
+  border-radius: 6px;
+  background: rgba(212,175,55,0.08);
+  border: 1px solid rgba(212,175,55,0.25);
+  color: var(--gold);
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.assign-btn:hover {
+  background: rgba(212,175,55,0.16);
+  border-color: var(--gold);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(212,175,55,0.18);
+}
+
+.assign-btn:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.assign-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.assign-icon {
+  font-size: 12px;
+  opacity: 0.9;
+}
