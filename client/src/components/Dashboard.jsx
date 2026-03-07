@@ -1,6 +1,23 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+} from "recharts";
 import "../styles/Dashboard.css";
 
 const Dashboard = () => {
@@ -8,6 +25,7 @@ const Dashboard = () => {
   const [showForm, setShowForm] = useState(false);
   const [user, setUser] = useState(null);
   const [features, setFeatures] = useState([]);
+  const [activeView, setActiveView] = useState("dashboard");
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -33,58 +51,58 @@ const Dashboard = () => {
   };
 
   const fetchFeatures = async () => {
-  try {
-    const res = await axios.get(
-      "http://localhost:5000/api/getcompletefeature/orgdashboard",
-      { withCredentials: true }
-    );
+    try {
+      const res = await axios.get(
+        "http://localhost:5000/api/getcompletefeature/orgdashboard",
+        { withCredentials: true }
+      );
 
-    console.log("FEATURE RESPONSE:", res.data);
+      console.log("FEATURE RESPONSE:", res.data);
 
-    if (res.data.success) {
-      setFeatures(res.data.features);
+      if (res.data.success) {
+        setFeatures(res.data.features);
+      }
+    } catch (error) {
+      console.log(error);
     }
-  } catch (error) {
-    console.log(error);
-  }
-};
+  };
 
   // Transform features into stats format
   const getStats = () => {
     const stats = [];
-    
+
     features.forEach((feature) => {
       feature.metrics.forEach((metric) => {
-        // Get icon based on feature name
         const icon = getFeatureIcon(feature.featureName);
-        
+
         stats.push({
           icon: icon,
           title: metric.name,
           value: metric.value !== null ? metric.value.toLocaleString() : "—",
           delta: metric.periodType || "",
-          featureName: feature.featureName
+          featureName: feature.featureName,
+          rawValue: metric.value,
         });
       });
     });
-    
+
     return stats;
   };
 
   // Helper function to assign icons based on feature name
   const getFeatureIcon = (featureName) => {
     const iconMap = {
-      "Accidents": "⚠️",
+      Accidents: "⚠️",
       "Electricity Bill": "⚡",
-      "Revenue": "💰",
-      "Expenses": "💳",
-      "Employees": "👥",
-      "Projects": "📊",
-      "Sales": "📈",
-      "Inventory": "📦",
-      "default": "📌"
+      Revenue: "💰",
+      Expenses: "💳",
+      Employees: "👥",
+      Projects: "📊",
+      Sales: "📈",
+      Inventory: "📦",
+      default: "📌",
     };
-    
+
     return iconMap[featureName] || iconMap.default;
   };
 
@@ -133,81 +151,67 @@ const Dashboard = () => {
 
   const logout = async (req, res) => {
     try {
-      await axios.post("http://localhost:5000/api/auth/logout", {}, { withCredentials: true });
+      await axios.post(
+        "http://localhost:5000/api/auth/logout",
+        {},
+        { withCredentials: true }
+      );
       navigate("/login");
     } catch (error) {
       console.log(error);
     }
   };
 
+  // Generate mock trend data for analytics
+  const generateTrendData = () => {
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
+    return months.map((month, idx) => ({
+      month,
+      revenue: 5000 + Math.random() * 50000,
+      expenses: 30000 + Math.random() * 30000,
+      profit: 20000 + Math.random() * 20000,
+    }));
+  };
+
+  // Prepare department budget data
+  const getDepartmentBudgetData = () => {
+    return departments.map((dept) => ({
+      name: dept.name,
+      budget: dept.budgetAllocated || 0,
+      spent: (dept.budgetAllocated || 0) * (0.5 + Math.random() * 0.4), // Mock spent amount
+    }));
+  };
+
+  // Prepare feature distribution data
+  const getFeatureDistribution = () => {
+    const stats = getStats();
+    const distribution = {};
+
+    stats.forEach((stat) => {
+      if (stat.rawValue && !isNaN(stat.rawValue)) {
+        if (!distribution[stat.featureName]) {
+          distribution[stat.featureName] = 0;
+        }
+        distribution[stat.featureName] += stat.rawValue;
+      }
+    });
+
+    return Object.entries(distribution).map(([name, value]) => ({
+      name,
+      value: Math.abs(value),
+    }));
+  };
+
+  const COLORS = ["#3DBA7E", "#BFA054", "#5B8BF5", "#E05252", "#E2C47A", "#7A6030", "#4facfe", "#14b8a6"];
+
   const stats = getStats();
-  console.log("Features:", features);
-  console.log("Stats:", stats);
 
-  return (
-    <>
-      <div className="db-root">
-        {/* SIDEBAR */}
-        <div className="db-sidebar">
-          <div className="db-sidebar-logo">
-            <div className="db-brand-mark">R</div>
-            <span className="db-brand-name">RevenueRadar</span>
-          </div>
-
-          <div className="db-nav-label">Navigation</div>
-
-          <ul className="db-menu">
-            <li className="active">
-              <span className="db-menu-icon">⬡</span> Dashboard
-            </li>
-            <li onClick={fetchDepartments}>
-              <span className="db-menu-icon">🏢</span> Departments
-            </li>
-            <li>
-              <span className="db-menu-icon">📈</span> Analytics
-            </li>
-            <li>
-              <span className="db-menu-icon">💳</span> Expenses
-            </li>
-            <li>
-              <span className="db-menu-icon">⚙</span> Settings
-            </li>
-          </ul>
-
-          <div className="db-sidebar-footer">
-            <button className="db-logout-btn" onClick={logout}>
-              ⎋ &nbsp;Sign Out
-            </button>
-          </div>
-        </div>
-
-        {/* MAIN */}
-        <div className="db-main">
-          {/* TOPBAR */}
-          <div className="db-topbar">
-            <div className="db-topbar-left">
-              <h2>Executive Overview</h2>
-              <div className="db-topbar-sub">
-                {new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
-              </div>
-            </div>
-            <div className="db-topbar-right">
-              <div className="db-live">
-                <div className="db-live-dot" />
-                Live
-              </div>
-              <button className="db-btn db-btn-ghost" onClick={fetchDepartments}>
-                Load Departments
-              </button>
-              <button className="db-btn db-btn-solid" onClick={() => setShowForm(true)}>
-                + New Department
-              </button>
-            </div>
-          </div>
-
-          {/* SCROLL AREA */}
-          <div className="db-scroll">
-
+  // Render different views based on activeView state
+  const renderContent = () => {
+    switch (activeView) {
+      case "dashboard":
+        return (
+          <>
             {/* STATS */}
             <div className="db-section-label">Key Metrics</div>
             <div className="db-stats">
@@ -238,7 +242,12 @@ const Dashboard = () => {
                       </button>
                       <div className="db-dept-name">{dept.name}</div>
                       <div className="db-dept-desc">{dept.description}</div>
-                      <div className="db-dept-budget">₹ {dept.budgetAllocated?.toLocaleString()}</div>
+                      <div className="db-dept-budget">
+                        ₹ {dept.budgetAllocated?.toLocaleString()}
+                      </div>
+                      <div className="db-dept-hod">
+                        <strong> {dept.headId?.name || "Not Assigned"}</strong>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -255,8 +264,504 @@ const Dashboard = () => {
                 <li className="db-activity-item">Backup completed</li>
               </ul>
             </div>
+          </>
+        );
 
+      case "departments":
+        return (
+          <>
+            <div className="db-section-label">All Departments</div>
+            {departments.length === 0 ? (
+              <div className="db-empty-state">
+                <div style={{ fontSize: "48px", marginBottom: "16px" }}>🏢</div>
+                <h3>No Departments Yet</h3>
+                <p>Click "Load Departments" or create your first department</p>
+              </div>
+            ) : (
+              <div className="db-dept-grid">
+                {departments.map((dept) => (
+                  <div key={dept._id} className="db-dept-card">
+                    <button
+                      className="db-dept-delete"
+                      onClick={() => deleteDepartment(dept._id)}
+                      title="Delete"
+                    >
+                      ✕
+                    </button>
+                    <div className="db-dept-name">{dept.name}</div>
+                    <div className="db-dept-desc">{dept.description}</div>
+                    <div className="db-dept-budget">
+                      ₹ {dept.budgetAllocated?.toLocaleString()}
+                    </div>
+                    <div className="db-dept-hod">
+                      <strong> {dept.headId?.name || "Not Assigned"}</strong>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        );
+
+      case "analytics":
+        const trendData = generateTrendData();
+        const deptBudgetData = getDepartmentBudgetData();
+        const featureDistribution = getFeatureDistribution();
+
+        return (
+          <>
+            {/* Key Insights - Now at the top */}
+            <div className="db-insights-grid">
+              <div className="db-insight-card db-insight-purple">
+                <div className="db-insight-header">
+                  <div className="db-insight-icon">🏢</div>
+                  <div className="db-insight-trend">↑ 12%</div>
+                </div>
+                <div className="db-insight-title">Total Departments</div>
+                <div className="db-insight-value">{departments.length}</div>
+                <div className="db-insight-footer">Active units</div>
+              </div>
+              <div className="db-insight-card db-insight-pink">
+                <div className="db-insight-header">
+                  <div className="db-insight-icon">💰</div>
+                  <div className="db-insight-trend">↑ 8%</div>
+                </div>
+                <div className="db-insight-title">Total Budget</div>
+                <div className="db-insight-value">
+                  ₹{" "}
+                  {(departments
+                    .reduce((sum, dept) => sum + (dept.budgetAllocated || 0), 0) / 100000).toFixed(1)}L
+                </div>
+                <div className="db-insight-footer">Budget allocated</div>
+              </div>
+              <div className="db-insight-card db-insight-blue">
+                <div className="db-insight-header">
+                  <div className="db-insight-icon">📊</div>
+                  <div className="db-insight-trend">↑ 15%</div>
+                </div>
+                <div className="db-insight-title">Active Metrics</div>
+                <div className="db-insight-value">{stats.length}</div>
+                <div className="db-insight-footer">Tracking points</div>
+              </div>
+              <div className="db-insight-card db-insight-green">
+                <div className="db-insight-header">
+                  <div className="db-insight-icon">🎯</div>
+                  <div className="db-insight-trend">↑ 5%</div>
+                </div>
+                <div className="db-insight-title">Avg Budget</div>
+                <div className="db-insight-value">
+                  ₹{" "}
+                  {departments.length > 0
+                    ? (Math.round(
+                        departments.reduce(
+                          (sum, dept) => sum + (dept.budgetAllocated || 0),
+                          0
+                        ) / departments.length
+                      ) / 100000).toFixed(1) + "L"
+                    : "0"}
+                </div>
+                <div className="db-insight-footer">Per department</div>
+              </div>
+            </div>
+
+            <div className="db-section-label">Financial Analytics</div>
+
+            {/* Revenue Trend Chart - Enhanced */}
+            <div className="db-chart-card">
+              <div className="db-chart-header">
+                <div>
+                  <h3 className="db-chart-title">Revenue & Expenses Overview</h3>
+                  <p className="db-chart-subtitle">6-month performance analysis</p>
+                </div>
+                <div className="db-chart-badge">Last 6 Months</div>
+              </div>
+              <ResponsiveContainer width="100%" height={350}>
+                <AreaChart data={trendData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3DBA7E" stopOpacity={0.25} />
+                      <stop offset="95%" stopColor="#3DBA7E" stopOpacity={0.02} />
+                    </linearGradient>
+                    <linearGradient id="colorExpenses" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#BFA054" stopOpacity={0.25} />
+                      <stop offset="95%" stopColor="#BFA054" stopOpacity={0.02} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(191,160,84,0.08)" vertical={false} />
+                  <XAxis 
+                    dataKey="month" 
+                    stroke="rgba(191,160,84,0.2)" 
+                    tick={{ fill: '#6B7385', fontSize: 10, fontFamily: 'DM Mono, monospace' }}
+                    axisLine={{ stroke: 'rgba(191,160,84,0.12)' }}
+                  />
+                  <YAxis 
+                    stroke="rgba(191,160,84,0.2)" 
+                    tick={{ fill: '#6B7385', fontSize: 10, fontFamily: 'DM Mono, monospace' }}
+                    axisLine={{ stroke: 'rgba(191,160,84,0.12)' }}
+                    tickFormatter={(value) => `₹${(value/1000).toFixed(0)}k`}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "rgba(12,16,24,0.95)",
+                      border: "1px solid rgba(191,160,84,0.3)",
+                      borderRadius: "8px",
+                      boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+                      padding: "12px 14px",
+                      fontFamily: 'DM Sans, sans-serif'
+                    }}
+                    formatter={(value) => [`₹${value.toLocaleString()}`, '']}
+                    labelStyle={{ color: '#E8E4DC', fontSize: '11px', fontWeight: 600, marginBottom: '6px' }}
+                    itemStyle={{ color: '#6B7385', fontSize: '11px', fontFamily: 'DM Mono, monospace' }}
+                  />
+                  <Legend 
+                    wrapperStyle={{ paddingTop: "24px" }}
+                    iconType="circle"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="#3DBA7E"
+                    strokeWidth={2.5}
+                    fillOpacity={1}
+                    fill="url(#colorRevenue)"
+                    name="Revenue"
+                    animationDuration={1500}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="expenses"
+                    stroke="#BFA054"
+                    strokeWidth={2.5}
+                    fillOpacity={1}
+                    fill="url(#colorExpenses)"
+                    name="Expenses"
+                    animationDuration={1500}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Two column layout for next charts */}
+            <div className="db-chart-row">
+              {/* Profit Trend Line Chart */}
+              <div className="db-chart-card">
+                <div className="db-chart-header">
+                  <div>
+                    <h3 className="db-chart-title">Profit Trajectory</h3>
+                    <p className="db-chart-subtitle">Growth over time</p>
+                  </div>
+                  <div className="db-chart-badge db-chart-badge-success">+23%</div>
+                </div>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={trendData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="profitGradient" x1="0" y1="0" x2="1" y2="0">
+                        <stop offset="0%" stopColor="#3DBA7E" />
+                        <stop offset="100%" stopColor="#2a8a5e" />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(191,160,84,0.08)" vertical={false} />
+                    <XAxis 
+                      dataKey="month" 
+                      stroke="rgba(191,160,84,0.2)" 
+                      tick={{ fill: '#6B7385', fontSize: 10, fontFamily: 'DM Mono, monospace' }}
+                      axisLine={{ stroke: 'rgba(191,160,84,0.12)' }}
+                    />
+                    <YAxis 
+                      stroke="rgba(191,160,84,0.2)" 
+                      tick={{ fill: '#6B7385', fontSize: 10, fontFamily: 'DM Mono, monospace' }}
+                      axisLine={{ stroke: 'rgba(191,160,84,0.12)' }}
+                      tickFormatter={(value) => `₹${(value/1000).toFixed(0)}k`}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "rgba(12,16,24,0.95)",
+                        border: "1px solid rgba(191,160,84,0.3)",
+                        borderRadius: "8px",
+                        boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+                        padding: "12px 14px"
+                      }}
+                      formatter={(value) => [`₹${value.toLocaleString()}`, '']}
+                      labelStyle={{ color: '#E8E4DC', fontSize: '11px', fontWeight: 600 }}
+                      itemStyle={{ color: '#6B7385', fontSize: '11px' }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="profit"
+                      stroke="url(#profitGradient)"
+                      strokeWidth={3}
+                      dot={{ 
+                        fill: "#3DBA7E", 
+                        r: 5,
+                        strokeWidth: 2,
+                        stroke: "rgba(12,16,24,0.8)"
+                      }}
+                      activeDot={{ r: 7, fill: "#3DBA7E" }}
+                      name="Profit"
+                      animationDuration={1500}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Feature Distribution Pie Chart */}
+              {featureDistribution.length > 0 && (
+                <div className="db-chart-card">
+                  <div className="db-chart-header">
+                    <div>
+                      <h3 className="db-chart-title">Metrics Distribution</h3>
+                      <p className="db-chart-subtitle">Breakdown by category</p>
+                    </div>
+                  </div>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <defs>
+                        {featureDistribution.map((entry, index) => (
+                          <linearGradient 
+                            key={`gradient-${index}`} 
+                            id={`pieGradient${index}`} 
+                            x1="0" 
+                            y1="0" 
+                            x2="1" 
+                            y2="1"
+                          >
+                            <stop offset="0%" stopColor={COLORS[index % COLORS.length]} stopOpacity={0.95} />
+                            <stop offset="100%" stopColor={COLORS[index % COLORS.length]} stopOpacity={0.75} />
+                          </linearGradient>
+                        ))}
+                      </defs>
+                      <Pie
+                        data={featureDistribution}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, percent }) =>
+                          percent > 0.05 ? `${name} ${(percent * 100).toFixed(0)}%` : ""
+                        }
+                        outerRadius={110}
+                        innerRadius={65}
+                        dataKey="value"
+                        animationDuration={1500}
+                        paddingAngle={2}
+                      >
+                        {featureDistribution.map((entry, index) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={`url(#pieGradient${index})`}
+                            stroke="rgba(12,16,24,0.9)"
+                            strokeWidth={2}
+                          />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "rgba(12,16,24,0.95)",
+                          border: "1px solid rgba(191,160,84,0.3)",
+                          borderRadius: "8px",
+                          boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+                          padding: "12px 14px"
+                        }}
+                        itemStyle={{ color: '#E8E4DC', fontSize: '11px' }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </div>
+
+            {/* Department Budget Comparison */}
+            {departments.length > 0 && (
+              <>
+                <div className="db-section-label">Department Performance</div>
+                <div className="db-chart-card">
+                  <div className="db-chart-header">
+                    <div>
+                      <h3 className="db-chart-title">Budget Allocation vs Utilization</h3>
+                      <p className="db-chart-subtitle">Department-wise spending analysis</p>
+                    </div>
+                    <div className="db-chart-legend-custom">
+                      <span className="db-legend-item">
+                        <span className="db-legend-dot" style={{background: '#5B8BF5'}}></span>
+                        Allocated
+                      </span>
+                      <span className="db-legend-item">
+                        <span className="db-legend-dot" style={{background: '#BFA054'}}></span>
+                        Spent
+                      </span>
+                    </div>
+                  </div>
+                  <ResponsiveContainer width="100%" height={350}>
+                    <BarChart 
+                      data={deptBudgetData} 
+                      margin={{ top: 20, right: 30, left: 0, bottom: 5 }}
+                      barGap={8}
+                    >
+                      <defs>
+                        <linearGradient id="budgetGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#5B8BF5" stopOpacity={0.95} />
+                          <stop offset="100%" stopColor="#5B8BF5" stopOpacity={0.7} />
+                        </linearGradient>
+                        <linearGradient id="spentGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#BFA054" stopOpacity={0.95} />
+                          <stop offset="100%" stopColor="#BFA054" stopOpacity={0.7} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(191,160,84,0.08)" vertical={false} />
+                      <XAxis 
+                        dataKey="name" 
+                        stroke="rgba(191,160,84,0.2)" 
+                        tick={{ fill: '#6B7385', fontSize: 10, fontFamily: 'DM Mono, monospace' }}
+                        axisLine={{ stroke: 'rgba(191,160,84,0.12)' }}
+                      />
+                      <YAxis 
+                        stroke="rgba(191,160,84,0.2)" 
+                        tick={{ fill: '#6B7385', fontSize: 10, fontFamily: 'DM Mono, monospace' }}
+                        axisLine={{ stroke: 'rgba(191,160,84,0.12)' }}
+                        tickFormatter={(value) => `₹${(value/100000).toFixed(0)}L`}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "rgba(12,16,24,0.95)",
+                          border: "1px solid rgba(191,160,84,0.3)",
+                          borderRadius: "8px",
+                          boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+                          padding: "12px 14px"
+                        }}
+                        formatter={(value) => [`₹${value.toLocaleString()}`, '']}
+                        labelStyle={{ color: '#E8E4DC', fontSize: '11px', fontWeight: 600 }}
+                        itemStyle={{ color: '#6B7385', fontSize: '11px' }}
+                        cursor={{ fill: 'rgba(191,160,84,0.05)' }}
+                      />
+                      <Bar 
+                        dataKey="budget" 
+                        fill="url(#budgetGradient)" 
+                        name="Allocated Budget"
+                        radius={[8, 8, 0, 0]}
+                        animationDuration={1500}
+                      />
+                      <Bar 
+                        dataKey="spent" 
+                        fill="url(#spentGradient)" 
+                        name="Spent"
+                        radius={[8, 8, 0, 0]}
+                        animationDuration={1500}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </>
+            )}
+          </>
+        );
+
+      default:
+        return <div className="db-empty-state">Coming Soon</div>;
+    }
+  };
+
+  return (
+    <>
+      <div className="db-root">
+        {/* SIDEBAR */}
+        <div className="db-sidebar">
+          <div className="db-sidebar-logo">
+            <div className="db-brand-mark">R</div>
+            <span className="db-brand-name">RevenueRadar</span>
           </div>
+
+          <div className="db-nav-label">Navigation</div>
+
+          <ul className="db-menu">
+            <li
+              className={activeView === "dashboard" ? "active" : ""}
+              onClick={() => setActiveView("dashboard")}
+            >
+              <span className="db-menu-icon">⬡</span> Dashboard
+            </li>
+            <li
+              className={activeView === "departments" ? "active" : ""}
+              onClick={() => {
+                setActiveView("departments");
+                fetchDepartments();
+              }}
+            >
+              <span className="db-menu-icon">🏢</span> Departments
+            </li>
+            <li
+              className={activeView === "analytics" ? "active" : ""}
+              onClick={() => setActiveView("analytics")}
+            >
+              <span className="db-menu-icon">📈</span> Analytics
+            </li>
+            {/*
+            <li
+              className={activeView === "expenses" ? "active" : ""}
+              onClick={() => setActiveView("expenses")}
+            >
+              <span className="db-menu-icon">💳</span> Expenses
+            </li>
+             <li
+              className={activeView === "settings" ? "active" : ""}
+              onClick={() => setActiveView("settings")}
+            >
+              <span className="db-menu-icon">⚙</span> Settings
+            </li> */}
+          </ul>
+
+          <div className="db-sidebar-footer">
+            <button className="db-logout-btn" onClick={logout}>
+              ⎋ &nbsp;Sign Out
+            </button>
+          </div>
+        </div>
+
+        {/* MAIN */}
+        <div className="db-main">
+          {/* TOPBAR */}
+          <div className="db-topbar">
+            <div className="db-topbar-left">
+              <h2>
+                {activeView === "dashboard" && "Executive Overview"}
+                {activeView === "departments" && "Departments"}
+                {activeView === "analytics" && "Analytics"}
+                {activeView === "expenses" && "Expenses"}
+                {activeView === "settings" && "Settings"}
+              </h2>
+              <div className="db-topbar-sub">
+                {new Date().toLocaleDateString("en-US", {
+                  weekday: "long",
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
+              </div>
+            </div>
+            <div className="db-topbar-right">
+              <div className="db-live">
+                <div className="db-live-dot" />
+                Live
+              </div>
+              {activeView === "departments" && (
+                <button
+                  className="db-btn db-btn-ghost"
+                  onClick={fetchDepartments}
+                >
+                  Refresh
+                </button>
+              )}
+              {(activeView === "departments" || activeView === "dashboard") && (
+                <button
+                  className="db-btn db-btn-solid"
+                  onClick={() => setShowForm(true)}
+                >
+                  + New Department
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* SCROLL AREA */}
+          <div className="db-scroll">{renderContent()}</div>
         </div>
 
         {/* MODAL */}
@@ -292,7 +797,11 @@ const Dashboard = () => {
                   required
                 />
                 <div className="db-modal-actions">
-                  <button type="button" className="db-modal-cancel" onClick={() => setShowForm(false)}>
+                  <button
+                    type="button"
+                    className="db-modal-cancel"
+                    onClick={() => setShowForm(false)}
+                  >
                     Cancel
                   </button>
                   <button type="submit" className="db-modal-submit">
