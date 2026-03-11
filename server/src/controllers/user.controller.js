@@ -2,6 +2,7 @@ import userModel from "../models/user.model.js"
 import departmentModel from '../models/department.model.js'
 import bcryptjs from 'bcryptjs'
 import jwt from 'jsonwebtoken'
+import { Activity } from "../models/activity.model.js"
 
 const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
 
@@ -147,6 +148,11 @@ export const register = async (req, res) => {
       sameSite: "strict",
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
+
+    await Activity.create({
+      organizationId,
+      description: "A new User has been created !!! "
+    })
 
     return res.status(201).json({
       success: true,

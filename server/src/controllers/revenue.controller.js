@@ -1,5 +1,6 @@
 import Revenue from '../models/revenue.model.js';
 import Department from '../models/department.model.js';
+import { Activity } from '../models/activity.model.js';
 
 /**
  * ======================================
@@ -94,6 +95,11 @@ export const createRevenue = async (req, res) => {
       invoiceNumber,
       createdBy: req.user._id
     });
+
+    const activityrevenue = await Activity.create({
+      organizationId: req.user.organizationId,
+      description: `Revenue of ${amount} generated !!! :)`
+    })
 
     return res.status(201).json({
       success: true,

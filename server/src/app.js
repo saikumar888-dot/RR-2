@@ -9,6 +9,7 @@ import featureRoutes from './routes/feature.route.js'
 import metricdefinionRoutes from './routes/metricdefinition.route.js'
 import metricdataRoutes from './routes/metricdata.route.js'
 import getfeatureRoute from './routes/getfeatures.route.js'
+import activityRoutes from './routes/activity.route.js'
 import cookieParser from 'cookie-parser'
 import cors from 'cors';
  
@@ -30,6 +31,7 @@ app.use('/api/features' , featureRoutes)
 app.use('/api/metricdefiniton' , metricdefinionRoutes)
 app.use('/api/metricsdatainput' , metricdataRoutes)
 app.use('/api/getcompletefeature' , getfeatureRoute)
+app.use('/api/activity' , activityRoutes)
 
 
 export default app;

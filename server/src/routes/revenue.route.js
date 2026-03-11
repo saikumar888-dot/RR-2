@@ -5,7 +5,7 @@ import {
   deleteRevenue,
   getRevenues,
   getRevenueByDepartment,
-  getTotalRevenue
+  getTotalRevenue,
 } from '../controllers/revenue.controller.js';
 import { protect } from '../middleware/auth.middleware.js';
 

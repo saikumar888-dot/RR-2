@@ -25,7 +25,16 @@ const Dashboard = () => {
   const [showForm, setShowForm] = useState(false);
   const [user, setUser] = useState(null);
   const [features, setFeatures] = useState([]);
+  const [activities , setActivities] = useState([]);
   const [activeView, setActiveView] = useState("dashboard");
+  const [organizationId , setOrganizationId] = useState(null)
+  const [totalRevenue , setTotalRevenue] = useState(null)
+  const [totalExpense , setTotalExpense] = useState(null)
+  const [period, setPeriod] = useState("month");
+  const [cashFlow, setCashFlow] = useState(null);
+
+
+
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -37,13 +46,84 @@ const Dashboard = () => {
   useEffect(() => {
     fetchUser();
     fetchFeatures();
+    fetchTotalRevenue();
+    fetchTotalExpense();
+    fetchCashFlow(period);
   }, []);
 
+  useEffect(() => {
+    fetchCashFlow(period);
+  }, [period])
+
+  useEffect(() => {
+    if(!organizationId) return
+    const fetchActivities = async () => {
+      try {
+        const res = await axios.get(
+          `http://localhost:5000/api/activity/getacts/${organizationId}`
+        );
+
+        //console.log(res.data.data)
+
+        setActivities(res.data.data);
+      } catch (error) {
+        console.error("Failed to fetch activities", error);
+      }
+    };
+
+    fetchActivities();
+  }, [organizationId]);
+
+  const fetchCashFlow = async (selectedPeriod) => {
+    try {
+      const res = await axios.get(
+        `http://localhost:5000/api/departments/analytics/cashflow?period=${selectedPeriod}`,
+        { withCredentials: true }
+      );
+
+      //console.log(res.data.cashFlow);
+
+      setCashFlow(res.data.cashFlow);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const fetchTotalRevenue = async () => {
+    try {
+      const res = await axios.get(
+        "http://localhost:5000/api/revenue/analytics/total",
+        { withCredentials: true }
+      );
+
+      //console.log(res.data.totalRevenue);
+      setTotalRevenue(res.data.totalRevenue)
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const fetchTotalExpense = async () => {
+    try {
+      const res = await axios.get(
+        "http://localhost:5000/api/expense/analytics/total",
+        { withCredentials: true }
+      );
+
+      //console.log(res.data.totalExpense);
+      setTotalExpense(res.data.totalExpense)
+    } catch (error) {
+      console.error(error);
+    }
+  };
+  
   const fetchUser = async (req, res) => {
     try {
       const res = await axios.get("http://localhost:5000/api/auth/me", {
         withCredentials: true,
       });
+
+      setOrganizationId(res.data.user.organizationId)
       setUser(res.data.user);
     } catch (error) {
       console.log(error);
@@ -57,7 +137,7 @@ const Dashboard = () => {
         { withCredentials: true }
       );
 
-      console.log("FEATURE RESPONSE:", res.data);
+      //console.log("FEATURE RESPONSE:", res.data);
 
       if (res.data.success) {
         setFeatures(res.data.features);
@@ -86,6 +166,37 @@ const Dashboard = () => {
       });
     });
 
+    if (totalRevenue !== null) {
+      stats.push({
+        icon: "💰",
+        title: "Total Revenue",
+        value: `₹ ${totalRevenue.toLocaleString()}`,
+        delta: "all time",
+        featureName: "Finance",
+      });
+    }
+
+
+    if(totalExpense !== null) {
+      stats.push({
+        icon: "💳",
+        title: "Total Expense",
+        value: `₹ ${totalExpense.toLocaleString()}`,
+        delta: "all time",
+        featureName: "Finance",
+      })
+    }
+
+    if(cashFlow !== null) {
+      stats.push({
+        icon: "💸",
+        title: "Cash Flow",
+        value: `₹ ${cashFlow.toLocaleString()}`,
+        delta: "all time",
+        featureName: "Finance",
+      })
+    }
+
     return stats;
   };
 
@@ -105,8 +216,6 @@ const Dashboard = () => {
 
     return iconMap[featureName] || iconMap.default;
   };
-
-  const organizationId = user?.organizationId;
 
   const fetchDepartments = async () => {
     try {
@@ -212,6 +321,28 @@ const Dashboard = () => {
       case "dashboard":
         return (
           <>
+            <div style={{ marginBottom: '16px' }}>
+              <label htmlFor="period-select" style={{ marginRight: '8px', fontWeight: '600', color: '#BFA054' }}>
+                Select Period:
+              </label>
+              <select
+                id="period-select"
+                value={period}
+                onChange={(e) => setPeriod(e.target.value)}
+                style={{
+                  backgroundColor: '#1a1a1a',
+                  color: '#fff',
+                  border: '1px solid #BFA054',
+                  borderRadius: '4px',
+                  padding: '4px 8px',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value="week">Week</option>
+                <option value="month">Month</option>
+                <option value="year">Year</option>
+              </select>
+            </div>
             {/* STATS */}
             <div className="db-section-label">Key Metrics</div>
             <div className="db-stats">
@@ -224,9 +355,12 @@ const Dashboard = () => {
                   <div className="db-stat-delta">{stat.delta}</div>
                 </div>
               ))}
+
             </div>
 
-            {/* DEPARTMENTS */}
+
+            
+            {/* DEPARTMENTS 
             {departments.length > 0 && (
               <>
                 <div className="db-section-label">Departments</div>
@@ -248,22 +382,25 @@ const Dashboard = () => {
                       <div className="db-dept-hod">
                         <strong> {dept.headId?.name || "Not Assigned"}</strong>
                       </div>
+
                     </div>
                   ))}
                 </div>
               </>
-            )}
+            )}*/}
+
 
             {/* ACTIVITY */}
             <div className="db-section-label">Recent Activity</div>
             <div className="db-activity">
-              <ul className="db-activity-list">
-                <li className="db-activity-item">New user registered</li>
-                <li className="db-activity-item">Expense approved</li>
-                <li className="db-activity-item">Payment received</li>
-                <li className="db-activity-item">Backup completed</li>
-              </ul>
-            </div>
+      <ul className="db-activity-list">
+        {activities.map((activity) => (
+          <li key={activity._id} className="db-activity-item">
+            {activity.description}
+          </li>
+        ))}
+      </ul>
+    </div>
           </>
         );
 
@@ -291,11 +428,13 @@ const Dashboard = () => {
                     <div className="db-dept-name">{dept.name}</div>
                     <div className="db-dept-desc">{dept.description}</div>
                     <div className="db-dept-budget">
-                      ₹ {dept.budgetAllocated?.toLocaleString()}
+                      ₹ Budget Allocated : {dept.budgetAllocated?.toLocaleString()}
                     </div>
-                    <div className="db-dept-hod">
-                      <strong> {dept.headId?.name || "Not Assigned"}</strong>
+                    <div className="db-dept-budget">
+                      ₹ Budget Used : {dept.budgetUsed?.toLocaleString()}
                     </div>
+                    {console.log(dept)}
+
                   </div>
                 ))}
               </div>

@@ -1,5 +1,6 @@
 import Expense from "../models/expense.model.js";
 import Department from "../models/department.model.js";
+import { Activity } from "../models/activity.model.js";
 
 /* =====================================================
    CREATE EXPENSE
@@ -86,6 +87,13 @@ export const createExpense = async (req, res) => {
     // Update department budget
     department.budgetUsed += amount;
     await department.save();
+
+    const activityexpense = await Activity.create({
+      organizationId: req.user.organizationId,
+      description: `Expense of ${amount} generated !!! `
+    })
+
+    console.log(activityexpense);
 
     return res.status(201).json({
       success: true,
@@ -327,3 +335,4 @@ export const getExpensesByOrganization = async (req, res) => {
     });
   }
 };
+
