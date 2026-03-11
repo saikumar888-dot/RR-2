@@ -430,11 +430,12 @@ const Dashboard = () => {
                     <div className="db-dept-budget">
                       ₹ Budget Allocated : {dept.budgetAllocated?.toLocaleString()}
                     </div>
-                    <div className="db-dept-budget">
-                      ₹ Budget Used : {dept.budgetUsed?.toLocaleString()}
-                    </div>
-                    {console.log(dept)}
-
+                    <button
+                      className="db-dept-financials-btn"
+                      onClick={() => navigate(`/departments/${dept._id}/financials`)}
+                    >
+                      📊 View Financials
+                    </button>
                   </div>
                 ))}
               </div>
