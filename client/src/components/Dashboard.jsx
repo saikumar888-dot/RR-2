@@ -25,15 +25,13 @@ const Dashboard = () => {
   const [showForm, setShowForm] = useState(false);
   const [user, setUser] = useState(null);
   const [features, setFeatures] = useState([]);
-  const [activities , setActivities] = useState([]);
+  const [activities, setActivities] = useState([]);
   const [activeView, setActiveView] = useState("dashboard");
-  const [organizationId , setOrganizationId] = useState(null)
-  const [totalRevenue , setTotalRevenue] = useState(null)
-  const [totalExpense , setTotalExpense] = useState(null)
+  const [organizationId, setOrganizationId] = useState(null);
+  const [totalRevenue, setTotalRevenue] = useState(null);
+  const [totalExpense, setTotalExpense] = useState(null);
   const [period, setPeriod] = useState("month");
   const [cashFlow, setCashFlow] = useState(null);
-
-
 
   const navigate = useNavigate();
 
@@ -43,6 +41,7 @@ const Dashboard = () => {
     budgetAllocated: "",
   });
 
+  // ─── Initial fetch on mount ───────────────────────────────────────────────
   useEffect(() => {
     fetchUser();
     fetchFeatures();
@@ -53,18 +52,20 @@ const Dashboard = () => {
 
   useEffect(() => {
     fetchCashFlow(period);
-  }, [period])
+  }, [period]);
 
+  // ─── BUG FIX: fetch both activities AND departments once organizationId is known
+  //     Previously, fetchDepartments() was only called when the user clicked the
+  //     Departments nav item — so navigating Dashboard → Analytics directly left
+  //     departments=[] and showed all zeros in the insight cards.
   useEffect(() => {
-    if(!organizationId) return
+    if (!organizationId) return;
+
     const fetchActivities = async () => {
       try {
         const res = await axios.get(
           `http://localhost:5000/api/activity/getacts/${organizationId}`
         );
-
-        //console.log(res.data.data)
-
         setActivities(res.data.data);
       } catch (error) {
         console.error("Failed to fetch activities", error);
@@ -72,17 +73,16 @@ const Dashboard = () => {
     };
 
     fetchActivities();
+    fetchDepartments(); // ← ensures departments are always pre-loaded
   }, [organizationId]);
 
+  // ─── API helpers ──────────────────────────────────────────────────────────
   const fetchCashFlow = async (selectedPeriod) => {
     try {
       const res = await axios.get(
         `http://localhost:5000/api/departments/analytics/cashflow?period=${selectedPeriod}`,
         { withCredentials: true }
       );
-
-      //console.log(res.data.cashFlow);
-
       setCashFlow(res.data.cashFlow);
     } catch (error) {
       console.log(error);
@@ -95,9 +95,7 @@ const Dashboard = () => {
         "http://localhost:5000/api/revenue/analytics/total",
         { withCredentials: true }
       );
-
-      //console.log(res.data.totalRevenue);
-      setTotalRevenue(res.data.totalRevenue)
+      setTotalRevenue(res.data.totalRevenue);
     } catch (error) {
       console.error(error);
     }
@@ -109,21 +107,18 @@ const Dashboard = () => {
         "http://localhost:5000/api/expense/analytics/total",
         { withCredentials: true }
       );
-
-      //console.log(res.data.totalExpense);
-      setTotalExpense(res.data.totalExpense)
+      setTotalExpense(res.data.totalExpense);
     } catch (error) {
       console.error(error);
     }
   };
-  
-  const fetchUser = async (req, res) => {
+
+  const fetchUser = async () => {
     try {
       const res = await axios.get("http://localhost:5000/api/auth/me", {
         withCredentials: true,
       });
-
-      setOrganizationId(res.data.user.organizationId)
+      setOrganizationId(res.data.user.organizationId);
       setUser(res.data.user);
     } catch (error) {
       console.log(error);
@@ -136,9 +131,6 @@ const Dashboard = () => {
         "http://localhost:5000/api/getcompletefeature/orgdashboard",
         { withCredentials: true }
       );
-
-      //console.log("FEATURE RESPONSE:", res.data);
-
       if (res.data.success) {
         setFeatures(res.data.features);
       }
@@ -147,16 +139,41 @@ const Dashboard = () => {
     }
   };
 
-  // Transform features into stats format
+  const fetchDepartments = async () => {
+    try {
+      const res = await axios.get(
+        `http://localhost:5000/api/departments/getalldepartment?organizationId=${organizationId}`
+      );
+      console.log(res.data);
+      setDepartments(res.data.data);
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  // ─── Stats helpers ────────────────────────────────────────────────────────
+  const getFeatureIcon = (featureName) => {
+    const iconMap = {
+      Accidents: "⚠️",
+      "Electricity Bill": "⚡",
+      Revenue: "💰",
+      Expenses: "💳",
+      Employees: "👥",
+      Projects: "📊",
+      Sales: "📈",
+      Inventory: "📦",
+      default: "📌",
+    };
+    return iconMap[featureName] || iconMap.default;
+  };
+
   const getStats = () => {
     const stats = [];
 
     features.forEach((feature) => {
       feature.metrics.forEach((metric) => {
-        const icon = getFeatureIcon(feature.featureName);
-
         stats.push({
-          icon: icon,
+          icon: getFeatureIcon(feature.featureName),
           title: metric.name,
           value: metric.value !== null ? metric.value.toLocaleString() : "—",
           delta: metric.periodType || "",
@@ -176,58 +193,30 @@ const Dashboard = () => {
       });
     }
 
-
-    if(totalExpense !== null) {
+    if (totalExpense !== null) {
       stats.push({
         icon: "💳",
         title: "Total Expense",
         value: `₹ ${totalExpense.toLocaleString()}`,
         delta: "all time",
         featureName: "Finance",
-      })
+      });
     }
 
-    if(cashFlow !== null) {
+    if (cashFlow !== null) {
       stats.push({
         icon: "💸",
         title: "Cash Flow",
         value: `₹ ${cashFlow.toLocaleString()}`,
         delta: "all time",
         featureName: "Finance",
-      })
+      });
     }
 
     return stats;
   };
 
-  // Helper function to assign icons based on feature name
-  const getFeatureIcon = (featureName) => {
-    const iconMap = {
-      Accidents: "⚠️",
-      "Electricity Bill": "⚡",
-      Revenue: "💰",
-      Expenses: "💳",
-      Employees: "👥",
-      Projects: "📊",
-      Sales: "📈",
-      Inventory: "📦",
-      default: "📌",
-    };
-
-    return iconMap[featureName] || iconMap.default;
-  };
-
-  const fetchDepartments = async () => {
-    try {
-      const res = await axios.get(
-        `http://localhost:5000/api/departments/getalldepartment?organizationId=${organizationId}`
-      );
-      setDepartments(res.data.data);
-    } catch (err) {
-      console.log(err);
-    }
-  };
-
+  // ─── Form handlers ────────────────────────────────────────────────────────
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -235,12 +224,15 @@ const Dashboard = () => {
   const createDepartment = async (e) => {
     e.preventDefault();
     try {
-      await axios.post("http://localhost:5000/api/departments/createdepartment", {
-        organizationId,
-        name: formData.name,
-        description: formData.description,
-        budgetAllocated: Number(formData.budgetAllocated),
-      });
+      await axios.post(
+        "http://localhost:5000/api/departments/createdepartment",
+        {
+          organizationId,
+          name: formData.name,
+          description: formData.description,
+          budgetAllocated: Number(formData.budgetAllocated),
+        }
+      );
       setShowForm(false);
       setFormData({ name: "", description: "", budgetAllocated: "" });
       fetchDepartments();
@@ -258,7 +250,7 @@ const Dashboard = () => {
     }
   };
 
-  const logout = async (req, res) => {
+  const logout = async () => {
     try {
       await axios.post(
         "http://localhost:5000/api/auth/logout",
@@ -271,10 +263,10 @@ const Dashboard = () => {
     }
   };
 
-  // Generate mock trend data for analytics
+  // ─── Chart data ───────────────────────────────────────────────────────────
   const generateTrendData = () => {
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
-    return months.map((month, idx) => ({
+    return months.map((month) => ({
       month,
       revenue: 5000 + Math.random() * 50000,
       expenses: 30000 + Math.random() * 30000,
@@ -282,47 +274,47 @@ const Dashboard = () => {
     }));
   };
 
-  // Prepare department budget data
   const getDepartmentBudgetData = () => {
     return departments.map((dept) => ({
       name: dept.name,
       budget: dept.budgetAllocated || 0,
-      spent: (dept.budgetAllocated || 0) * (0.5 + Math.random() * 0.4), // Mock spent amount
+      spent: (dept.budgetAllocated || 0) * (0.5 + Math.random() * 0.4),
     }));
   };
 
-  // Prepare feature distribution data
   const getFeatureDistribution = () => {
     const stats = getStats();
     const distribution = {};
-
     stats.forEach((stat) => {
       if (stat.rawValue && !isNaN(stat.rawValue)) {
-        if (!distribution[stat.featureName]) {
-          distribution[stat.featureName] = 0;
-        }
+        if (!distribution[stat.featureName]) distribution[stat.featureName] = 0;
         distribution[stat.featureName] += stat.rawValue;
       }
     });
-
     return Object.entries(distribution).map(([name, value]) => ({
       name,
       value: Math.abs(value),
     }));
   };
 
-  const COLORS = ["#3DBA7E", "#BFA054", "#5B8BF5", "#E05252", "#E2C47A", "#7A6030", "#4facfe", "#14b8a6"];
+  const COLORS = [
+    "#3DBA7E", "#BFA054", "#5B8BF5", "#E05252",
+    "#E2C47A", "#7A6030", "#4facfe", "#14b8a6",
+  ];
 
   const stats = getStats();
 
-  // Render different views based on activeView state
+  // ─── View renderer ────────────────────────────────────────────────────────
   const renderContent = () => {
     switch (activeView) {
       case "dashboard":
         return (
           <>
-            <div style={{ marginBottom: '16px' }}>
-              <label htmlFor="period-select" style={{ marginRight: '8px', fontWeight: '600', color: '#BFA054' }}>
+            <div style={{ marginBottom: "16px" }}>
+              <label
+                htmlFor="period-select"
+                style={{ marginRight: "8px", fontWeight: "600", color: "#BFA054" }}
+              >
                 Select Period:
               </label>
               <select
@@ -330,12 +322,12 @@ const Dashboard = () => {
                 value={period}
                 onChange={(e) => setPeriod(e.target.value)}
                 style={{
-                  backgroundColor: '#1a1a1a',
-                  color: '#fff',
-                  border: '1px solid #BFA054',
-                  borderRadius: '4px',
-                  padding: '4px 8px',
-                  cursor: 'pointer'
+                  backgroundColor: "#1a1a1a",
+                  color: "#fff",
+                  border: "1px solid #BFA054",
+                  borderRadius: "4px",
+                  padding: "4px 8px",
+                  cursor: "pointer",
                 }}
               >
                 <option value="week">Week</option>
@@ -343,7 +335,7 @@ const Dashboard = () => {
                 <option value="year">Year</option>
               </select>
             </div>
-            {/* STATS */}
+
             <div className="db-section-label">Key Metrics</div>
             <div className="db-stats">
               {stats.map((stat, index) => (
@@ -355,52 +347,18 @@ const Dashboard = () => {
                   <div className="db-stat-delta">{stat.delta}</div>
                 </div>
               ))}
-
             </div>
 
-
-            
-            {/* DEPARTMENTS 
-            {departments.length > 0 && (
-              <>
-                <div className="db-section-label">Departments</div>
-                <div className="db-dept-grid">
-                  {departments.map((dept) => (
-                    <div key={dept._id} className="db-dept-card">
-                      <button
-                        className="db-dept-delete"
-                        onClick={() => deleteDepartment(dept._id)}
-                        title="Delete"
-                      >
-                        ✕
-                      </button>
-                      <div className="db-dept-name">{dept.name}</div>
-                      <div className="db-dept-desc">{dept.description}</div>
-                      <div className="db-dept-budget">
-                        ₹ {dept.budgetAllocated?.toLocaleString()}
-                      </div>
-                      <div className="db-dept-hod">
-                        <strong> {dept.headId?.name || "Not Assigned"}</strong>
-                      </div>
-
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}*/}
-
-
-            {/* ACTIVITY */}
             <div className="db-section-label">Recent Activity</div>
             <div className="db-activity">
-      <ul className="db-activity-list">
-        {activities.map((activity) => (
-          <li key={activity._id} className="db-activity-item">
-            {activity.description}
-          </li>
-        ))}
-      </ul>
-    </div>
+              <ul className="db-activity-list">
+                {activities.map((activity) => (
+                  <li key={activity._id} className="db-activity-item">
+                    {activity.description}
+                  </li>
+                ))}
+              </ul>
+            </div>
           </>
         );
 
@@ -443,14 +401,14 @@ const Dashboard = () => {
           </>
         );
 
-      case "analytics":
+      case "analytics": {
         const trendData = generateTrendData();
         const deptBudgetData = getDepartmentBudgetData();
         const featureDistribution = getFeatureDistribution();
 
         return (
           <>
-            {/* Key Insights - Now at the top */}
+            {/* Key Insight Cards */}
             <div className="db-insights-grid">
               <div className="db-insight-card db-insight-purple">
                 <div className="db-insight-header">
@@ -461,6 +419,7 @@ const Dashboard = () => {
                 <div className="db-insight-value">{departments.length}</div>
                 <div className="db-insight-footer">Active units</div>
               </div>
+
               <div className="db-insight-card db-insight-pink">
                 <div className="db-insight-header">
                   <div className="db-insight-icon">💰</div>
@@ -469,11 +428,17 @@ const Dashboard = () => {
                 <div className="db-insight-title">Total Budget</div>
                 <div className="db-insight-value">
                   ₹{" "}
-                  {(departments
-                    .reduce((sum, dept) => sum + (dept.budgetAllocated || 0), 0) / 100000).toFixed(1)}L
+                  {(
+                    departments.reduce(
+                      (sum, dept) => sum + (dept.budgetAllocated || 0),
+                      0
+                    ) / 100000
+                  ).toFixed(1)}
+                  L
                 </div>
                 <div className="db-insight-footer">Budget allocated</div>
               </div>
+
               <div className="db-insight-card db-insight-blue">
                 <div className="db-insight-header">
                   <div className="db-insight-icon">📊</div>
@@ -483,6 +448,7 @@ const Dashboard = () => {
                 <div className="db-insight-value">{stats.length}</div>
                 <div className="db-insight-footer">Tracking points</div>
               </div>
+
               <div className="db-insight-card db-insight-green">
                 <div className="db-insight-header">
                   <div className="db-insight-icon">🎯</div>
@@ -492,12 +458,14 @@ const Dashboard = () => {
                 <div className="db-insight-value">
                   ₹{" "}
                   {departments.length > 0
-                    ? (Math.round(
-                        departments.reduce(
-                          (sum, dept) => sum + (dept.budgetAllocated || 0),
-                          0
-                        ) / departments.length
-                      ) / 100000).toFixed(1) + "L"
+                    ? (
+                        Math.round(
+                          departments.reduce(
+                            (sum, dept) => sum + (dept.budgetAllocated || 0),
+                            0
+                          ) / departments.length
+                        ) / 100000
+                      ).toFixed(1) + "L"
                     : "0"}
                 </div>
                 <div className="db-insight-footer">Per department</div>
@@ -506,7 +474,7 @@ const Dashboard = () => {
 
             <div className="db-section-label">Financial Analytics</div>
 
-            {/* Revenue Trend Chart - Enhanced */}
+            {/* Area Chart */}
             <div className="db-chart-card">
               <div className="db-chart-header">
                 <div>
@@ -528,62 +496,18 @@ const Dashboard = () => {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(191,160,84,0.08)" vertical={false} />
-                  <XAxis 
-                    dataKey="month" 
-                    stroke="rgba(191,160,84,0.2)" 
-                    tick={{ fill: '#6B7385', fontSize: 10, fontFamily: 'DM Mono, monospace' }}
-                    axisLine={{ stroke: 'rgba(191,160,84,0.12)' }}
-                  />
-                  <YAxis 
-                    stroke="rgba(191,160,84,0.2)" 
-                    tick={{ fill: '#6B7385', fontSize: 10, fontFamily: 'DM Mono, monospace' }}
-                    axisLine={{ stroke: 'rgba(191,160,84,0.12)' }}
-                    tickFormatter={(value) => `₹${(value/1000).toFixed(0)}k`}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "rgba(12,16,24,0.95)",
-                      border: "1px solid rgba(191,160,84,0.3)",
-                      borderRadius: "8px",
-                      boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
-                      padding: "12px 14px",
-                      fontFamily: 'DM Sans, sans-serif'
-                    }}
-                    formatter={(value) => [`₹${value.toLocaleString()}`, '']}
-                    labelStyle={{ color: '#E8E4DC', fontSize: '11px', fontWeight: 600, marginBottom: '6px' }}
-                    itemStyle={{ color: '#6B7385', fontSize: '11px', fontFamily: 'DM Mono, monospace' }}
-                  />
-                  <Legend 
-                    wrapperStyle={{ paddingTop: "24px" }}
-                    iconType="circle"
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="revenue"
-                    stroke="#3DBA7E"
-                    strokeWidth={2.5}
-                    fillOpacity={1}
-                    fill="url(#colorRevenue)"
-                    name="Revenue"
-                    animationDuration={1500}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="expenses"
-                    stroke="#BFA054"
-                    strokeWidth={2.5}
-                    fillOpacity={1}
-                    fill="url(#colorExpenses)"
-                    name="Expenses"
-                    animationDuration={1500}
-                  />
+                  <XAxis dataKey="month" stroke="rgba(191,160,84,0.2)" tick={{ fill: "#6B7385", fontSize: 10, fontFamily: "DM Mono, monospace" }} axisLine={{ stroke: "rgba(191,160,84,0.12)" }} />
+                  <YAxis stroke="rgba(191,160,84,0.2)" tick={{ fill: "#6B7385", fontSize: 10, fontFamily: "DM Mono, monospace" }} axisLine={{ stroke: "rgba(191,160,84,0.12)" }} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
+                  <Tooltip contentStyle={{ backgroundColor: "rgba(12,16,24,0.95)", border: "1px solid rgba(191,160,84,0.3)", borderRadius: "8px", boxShadow: "0 8px 24px rgba(0,0,0,0.4)", padding: "12px 14px", fontFamily: "DM Sans, sans-serif" }} formatter={(v) => [`₹${v.toLocaleString()}`, ""]} labelStyle={{ color: "#E8E4DC", fontSize: "11px", fontWeight: 600, marginBottom: "6px" }} itemStyle={{ color: "#6B7385", fontSize: "11px", fontFamily: "DM Mono, monospace" }} />
+                  <Legend wrapperStyle={{ paddingTop: "24px" }} iconType="circle" />
+                  <Area type="monotone" dataKey="revenue" stroke="#3DBA7E" strokeWidth={2.5} fillOpacity={1} fill="url(#colorRevenue)" name="Revenue" animationDuration={1500} />
+                  <Area type="monotone" dataKey="expenses" stroke="#BFA054" strokeWidth={2.5} fillOpacity={1} fill="url(#colorExpenses)" name="Expenses" animationDuration={1500} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
 
-            {/* Two column layout for next charts */}
+            {/* Line + Pie Row */}
             <div className="db-chart-row">
-              {/* Profit Trend Line Chart */}
               <div className="db-chart-card">
                 <div className="db-chart-header">
                   <div>
@@ -601,50 +525,14 @@ const Dashboard = () => {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(191,160,84,0.08)" vertical={false} />
-                    <XAxis 
-                      dataKey="month" 
-                      stroke="rgba(191,160,84,0.2)" 
-                      tick={{ fill: '#6B7385', fontSize: 10, fontFamily: 'DM Mono, monospace' }}
-                      axisLine={{ stroke: 'rgba(191,160,84,0.12)' }}
-                    />
-                    <YAxis 
-                      stroke="rgba(191,160,84,0.2)" 
-                      tick={{ fill: '#6B7385', fontSize: 10, fontFamily: 'DM Mono, monospace' }}
-                      axisLine={{ stroke: 'rgba(191,160,84,0.12)' }}
-                      tickFormatter={(value) => `₹${(value/1000).toFixed(0)}k`}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "rgba(12,16,24,0.95)",
-                        border: "1px solid rgba(191,160,84,0.3)",
-                        borderRadius: "8px",
-                        boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
-                        padding: "12px 14px"
-                      }}
-                      formatter={(value) => [`₹${value.toLocaleString()}`, '']}
-                      labelStyle={{ color: '#E8E4DC', fontSize: '11px', fontWeight: 600 }}
-                      itemStyle={{ color: '#6B7385', fontSize: '11px' }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="profit"
-                      stroke="url(#profitGradient)"
-                      strokeWidth={3}
-                      dot={{ 
-                        fill: "#3DBA7E", 
-                        r: 5,
-                        strokeWidth: 2,
-                        stroke: "rgba(12,16,24,0.8)"
-                      }}
-                      activeDot={{ r: 7, fill: "#3DBA7E" }}
-                      name="Profit"
-                      animationDuration={1500}
-                    />
+                    <XAxis dataKey="month" stroke="rgba(191,160,84,0.2)" tick={{ fill: "#6B7385", fontSize: 10, fontFamily: "DM Mono, monospace" }} axisLine={{ stroke: "rgba(191,160,84,0.12)" }} />
+                    <YAxis stroke="rgba(191,160,84,0.2)" tick={{ fill: "#6B7385", fontSize: 10, fontFamily: "DM Mono, monospace" }} axisLine={{ stroke: "rgba(191,160,84,0.12)" }} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
+                    <Tooltip contentStyle={{ backgroundColor: "rgba(12,16,24,0.95)", border: "1px solid rgba(191,160,84,0.3)", borderRadius: "8px", boxShadow: "0 8px 24px rgba(0,0,0,0.4)", padding: "12px 14px" }} formatter={(v) => [`₹${v.toLocaleString()}`, ""]} labelStyle={{ color: "#E8E4DC", fontSize: "11px", fontWeight: 600 }} itemStyle={{ color: "#6B7385", fontSize: "11px" }} />
+                    <Line type="monotone" dataKey="profit" stroke="url(#profitGradient)" strokeWidth={3} dot={{ fill: "#3DBA7E", r: 5, strokeWidth: 2, stroke: "rgba(12,16,24,0.8)" }} activeDot={{ r: 7, fill: "#3DBA7E" }} name="Profit" animationDuration={1500} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
 
-              {/* Feature Distribution Pie Chart */}
               {featureDistribution.length > 0 && (
                 <div className="db-chart-card">
                   <div className="db-chart-header">
@@ -656,60 +544,26 @@ const Dashboard = () => {
                   <ResponsiveContainer width="100%" height={300}>
                     <PieChart>
                       <defs>
-                        {featureDistribution.map((entry, index) => (
-                          <linearGradient 
-                            key={`gradient-${index}`} 
-                            id={`pieGradient${index}`} 
-                            x1="0" 
-                            y1="0" 
-                            x2="1" 
-                            y2="1"
-                          >
+                        {featureDistribution.map((_, index) => (
+                          <linearGradient key={`gradient-${index}`} id={`pieGradient${index}`} x1="0" y1="0" x2="1" y2="1">
                             <stop offset="0%" stopColor={COLORS[index % COLORS.length]} stopOpacity={0.95} />
                             <stop offset="100%" stopColor={COLORS[index % COLORS.length]} stopOpacity={0.75} />
                           </linearGradient>
                         ))}
                       </defs>
-                      <Pie
-                        data={featureDistribution}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ name, percent }) =>
-                          percent > 0.05 ? `${name} ${(percent * 100).toFixed(0)}%` : ""
-                        }
-                        outerRadius={110}
-                        innerRadius={65}
-                        dataKey="value"
-                        animationDuration={1500}
-                        paddingAngle={2}
-                      >
-                        {featureDistribution.map((entry, index) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={`url(#pieGradient${index})`}
-                            stroke="rgba(12,16,24,0.9)"
-                            strokeWidth={2}
-                          />
+                      <Pie data={featureDistribution} cx="50%" cy="50%" labelLine={false} label={({ name, percent }) => percent > 0.05 ? `${name} ${(percent * 100).toFixed(0)}%` : ""} outerRadius={110} innerRadius={65} dataKey="value" animationDuration={1500} paddingAngle={2}>
+                        {featureDistribution.map((_, index) => (
+                          <Cell key={`cell-${index}`} fill={`url(#pieGradient${index})`} stroke="rgba(12,16,24,0.9)" strokeWidth={2} />
                         ))}
                       </Pie>
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "rgba(12,16,24,0.95)",
-                          border: "1px solid rgba(191,160,84,0.3)",
-                          borderRadius: "8px",
-                          boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
-                          padding: "12px 14px"
-                        }}
-                        itemStyle={{ color: '#E8E4DC', fontSize: '11px' }}
-                      />
+                      <Tooltip contentStyle={{ backgroundColor: "rgba(12,16,24,0.95)", border: "1px solid rgba(191,160,84,0.3)", borderRadius: "8px", boxShadow: "0 8px 24px rgba(0,0,0,0.4)", padding: "12px 14px" }} itemStyle={{ color: "#E8E4DC", fontSize: "11px" }} />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
               )}
             </div>
 
-            {/* Department Budget Comparison */}
+            {/* Bar Chart */}
             {departments.length > 0 && (
               <>
                 <div className="db-section-label">Department Performance</div>
@@ -721,21 +575,17 @@ const Dashboard = () => {
                     </div>
                     <div className="db-chart-legend-custom">
                       <span className="db-legend-item">
-                        <span className="db-legend-dot" style={{background: '#5B8BF5'}}></span>
+                        <span className="db-legend-dot" style={{ background: "#5B8BF5" }}></span>
                         Allocated
                       </span>
                       <span className="db-legend-item">
-                        <span className="db-legend-dot" style={{background: '#BFA054'}}></span>
+                        <span className="db-legend-dot" style={{ background: "#BFA054" }}></span>
                         Spent
                       </span>
                     </div>
                   </div>
                   <ResponsiveContainer width="100%" height={350}>
-                    <BarChart 
-                      data={deptBudgetData} 
-                      margin={{ top: 20, right: 30, left: 0, bottom: 5 }}
-                      barGap={8}
-                    >
+                    <BarChart data={deptBudgetData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }} barGap={8}>
                       <defs>
                         <linearGradient id="budgetGradient" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="0%" stopColor="#5B8BF5" stopOpacity={0.95} />
@@ -747,45 +597,11 @@ const Dashboard = () => {
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(191,160,84,0.08)" vertical={false} />
-                      <XAxis 
-                        dataKey="name" 
-                        stroke="rgba(191,160,84,0.2)" 
-                        tick={{ fill: '#6B7385', fontSize: 10, fontFamily: 'DM Mono, monospace' }}
-                        axisLine={{ stroke: 'rgba(191,160,84,0.12)' }}
-                      />
-                      <YAxis 
-                        stroke="rgba(191,160,84,0.2)" 
-                        tick={{ fill: '#6B7385', fontSize: 10, fontFamily: 'DM Mono, monospace' }}
-                        axisLine={{ stroke: 'rgba(191,160,84,0.12)' }}
-                        tickFormatter={(value) => `₹${(value/100000).toFixed(0)}L`}
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "rgba(12,16,24,0.95)",
-                          border: "1px solid rgba(191,160,84,0.3)",
-                          borderRadius: "8px",
-                          boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
-                          padding: "12px 14px"
-                        }}
-                        formatter={(value) => [`₹${value.toLocaleString()}`, '']}
-                        labelStyle={{ color: '#E8E4DC', fontSize: '11px', fontWeight: 600 }}
-                        itemStyle={{ color: '#6B7385', fontSize: '11px' }}
-                        cursor={{ fill: 'rgba(191,160,84,0.05)' }}
-                      />
-                      <Bar 
-                        dataKey="budget" 
-                        fill="url(#budgetGradient)" 
-                        name="Allocated Budget"
-                        radius={[8, 8, 0, 0]}
-                        animationDuration={1500}
-                      />
-                      <Bar 
-                        dataKey="spent" 
-                        fill="url(#spentGradient)" 
-                        name="Spent"
-                        radius={[8, 8, 0, 0]}
-                        animationDuration={1500}
-                      />
+                      <XAxis dataKey="name" stroke="rgba(191,160,84,0.2)" tick={{ fill: "#6B7385", fontSize: 10, fontFamily: "DM Mono, monospace" }} axisLine={{ stroke: "rgba(191,160,84,0.12)" }} />
+                      <YAxis stroke="rgba(191,160,84,0.2)" tick={{ fill: "#6B7385", fontSize: 10, fontFamily: "DM Mono, monospace" }} axisLine={{ stroke: "rgba(191,160,84,0.12)" }} tickFormatter={(v) => `₹${(v / 100000).toFixed(0)}L`} />
+                      <Tooltip contentStyle={{ backgroundColor: "rgba(12,16,24,0.95)", border: "1px solid rgba(191,160,84,0.3)", borderRadius: "8px", boxShadow: "0 8px 24px rgba(0,0,0,0.4)", padding: "12px 14px" }} formatter={(v) => [`₹${v.toLocaleString()}`, ""]} labelStyle={{ color: "#E8E4DC", fontSize: "11px", fontWeight: 600 }} itemStyle={{ color: "#6B7385", fontSize: "11px" }} cursor={{ fill: "rgba(191,160,84,0.05)" }} />
+                      <Bar dataKey="budget" fill="url(#budgetGradient)" name="Allocated Budget" radius={[8, 8, 0, 0]} animationDuration={1500} />
+                      <Bar dataKey="spent" fill="url(#spentGradient)" name="Spent" radius={[8, 8, 0, 0]} animationDuration={1500} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -793,167 +609,149 @@ const Dashboard = () => {
             )}
           </>
         );
+      }
 
       default:
         return <div className="db-empty-state">Coming Soon</div>;
     }
   };
 
+  // ─── Render ───────────────────────────────────────────────────────────────
   return (
-    <>
-      <div className="db-root">
-        {/* SIDEBAR */}
-        <div className="db-sidebar">
-          <div className="db-sidebar-logo">
-            <div className="db-brand-mark">R</div>
-            <span className="db-brand-name">RevenueRadar</span>
-          </div>
-
-          <div className="db-nav-label">Navigation</div>
-
-          <ul className="db-menu">
-            <li
-              className={activeView === "dashboard" ? "active" : ""}
-              onClick={() => setActiveView("dashboard")}
-            >
-              <span className="db-menu-icon">⬡</span> Dashboard
-            </li>
-            <li
-              className={activeView === "departments" ? "active" : ""}
-              onClick={() => {
-                setActiveView("departments");
-                fetchDepartments();
-              }}
-            >
-              <span className="db-menu-icon">🏢</span> Departments
-            </li>
-            <li
-              className={activeView === "analytics" ? "active" : ""}
-              onClick={() => setActiveView("analytics")}
-            >
-              <span className="db-menu-icon">📈</span> Analytics
-            </li>
-            {/*
-            <li
-              className={activeView === "expenses" ? "active" : ""}
-              onClick={() => setActiveView("expenses")}
-            >
-              <span className="db-menu-icon">💳</span> Expenses
-            </li>
-             <li
-              className={activeView === "settings" ? "active" : ""}
-              onClick={() => setActiveView("settings")}
-            >
-              <span className="db-menu-icon">⚙</span> Settings
-            </li> */}
-          </ul>
-
-          <div className="db-sidebar-footer">
-            <button className="db-logout-btn" onClick={logout}>
-              ⎋ &nbsp;Sign Out
-            </button>
-          </div>
+    <div className="db-root">
+      {/* SIDEBAR */}
+      <div className="db-sidebar">
+        <div className="db-sidebar-logo">
+          <div className="db-brand-mark">R</div>
+          <span className="db-brand-name">RevenueRadar</span>
         </div>
 
-        {/* MAIN */}
-        <div className="db-main">
-          {/* TOPBAR */}
-          <div className="db-topbar">
-            <div className="db-topbar-left">
-              <h2>
-                {activeView === "dashboard" && "Executive Overview"}
-                {activeView === "departments" && "Departments"}
-                {activeView === "analytics" && "Analytics"}
-                {activeView === "expenses" && "Expenses"}
-                {activeView === "settings" && "Settings"}
-              </h2>
-              <div className="db-topbar-sub">
-                {new Date().toLocaleDateString("en-US", {
-                  weekday: "long",
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
-              </div>
-            </div>
-            <div className="db-topbar-right">
-              <div className="db-live">
-                <div className="db-live-dot" />
-                Live
-              </div>
-              {activeView === "departments" && (
-                <button
-                  className="db-btn db-btn-ghost"
-                  onClick={fetchDepartments}
-                >
-                  Refresh
-                </button>
-              )}
-              {(activeView === "departments" || activeView === "dashboard") && (
-                <button
-                  className="db-btn db-btn-solid"
-                  onClick={() => setShowForm(true)}
-                >
-                  + New Department
-                </button>
-              )}
-            </div>
-          </div>
+        <div className="db-nav-label">Navigation</div>
 
-          {/* SCROLL AREA */}
-          <div className="db-scroll">{renderContent()}</div>
+        <ul className="db-menu">
+          <li
+            className={activeView === "dashboard" ? "active" : ""}
+            onClick={() => setActiveView("dashboard")}
+          >
+            <span className="db-menu-icon">⬡</span> Dashboard
+          </li>
+          <li
+            className={activeView === "departments" ? "active" : ""}
+            onClick={() => {
+              setActiveView("departments");
+              fetchDepartments();
+            }}
+          >
+            <span className="db-menu-icon">🏢</span> Departments
+          </li>
+          <li
+            className={activeView === "analytics" ? "active" : ""}
+            onClick={() => setActiveView("analytics")}
+          >
+            <span className="db-menu-icon">📈</span> Analytics
+          </li>
+        </ul>
+
+        <div className="db-sidebar-footer">
+          <button className="db-logout-btn" onClick={logout}>
+            ⎋ &nbsp;Sign Out
+          </button>
         </div>
-
-        {/* MODAL */}
-        {showForm && (
-          <div className="db-modal-overlay">
-            <div className="db-modal">
-              <h3>Create Department</h3>
-              <form onSubmit={createDepartment}>
-                <label className="db-field-label">Department Name</label>
-                <input
-                  name="name"
-                  placeholder="e.g. Engineering"
-                  value={formData.name}
-                  onChange={handleChange}
-                  required
-                />
-                <label className="db-field-label">Description</label>
-                <textarea
-                  name="description"
-                  placeholder="Brief description of this department..."
-                  value={formData.description}
-                  onChange={handleChange}
-                  required
-                  rows={3}
-                />
-                <label className="db-field-label">Budget Allocated (₹)</label>
-                <input
-                  name="budgetAllocated"
-                  type="number"
-                  placeholder="e.g. 500000"
-                  value={formData.budgetAllocated}
-                  onChange={handleChange}
-                  required
-                />
-                <div className="db-modal-actions">
-                  <button
-                    type="button"
-                    className="db-modal-cancel"
-                    onClick={() => setShowForm(false)}
-                  >
-                    Cancel
-                  </button>
-                  <button type="submit" className="db-modal-submit">
-                    Create Department
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
       </div>
-    </>
+
+      {/* MAIN */}
+      <div className="db-main">
+        {/* TOPBAR */}
+        <div className="db-topbar">
+          <div className="db-topbar-left">
+            <h2>
+              {activeView === "dashboard" && "Executive Overview"}
+              {activeView === "departments" && "Departments"}
+              {activeView === "analytics" && "Analytics"}
+            </h2>
+            <div className="db-topbar-sub">
+              {new Date().toLocaleDateString("en-US", {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
+            </div>
+          </div>
+          <div className="db-topbar-right">
+            <div className="db-live">
+              <div className="db-live-dot" />
+              Live
+            </div>
+            {activeView === "departments" && (
+              <button className="db-btn db-btn-ghost" onClick={fetchDepartments}>
+                Refresh
+              </button>
+            )}
+            {(activeView === "departments" || activeView === "dashboard") && (
+              <button
+                className="db-btn db-btn-solid"
+                onClick={() => setShowForm(true)}
+              >
+                + New Department
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* SCROLL AREA */}
+        <div className="db-scroll">{renderContent()}</div>
+      </div>
+
+      {/* MODAL */}
+      {showForm && (
+        <div className="db-modal-overlay">
+          <div className="db-modal">
+            <h3>Create Department</h3>
+            <form onSubmit={createDepartment}>
+              <label className="db-field-label">Department Name</label>
+              <input
+                name="name"
+                placeholder="e.g. Engineering"
+                value={formData.name}
+                onChange={handleChange}
+                required
+              />
+              <label className="db-field-label">Description</label>
+              <textarea
+                name="description"
+                placeholder="Brief description of this department..."
+                value={formData.description}
+                onChange={handleChange}
+                required
+                rows={3}
+              />
+              <label className="db-field-label">Budget Allocated (₹)</label>
+              <input
+                name="budgetAllocated"
+                type="number"
+                placeholder="e.g. 500000"
+                value={formData.budgetAllocated}
+                onChange={handleChange}
+                required
+              />
+              <div className="db-modal-actions">
+                <button
+                  type="button"
+                  className="db-modal-cancel"
+                  onClick={() => setShowForm(false)}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="db-modal-submit">
+                  Create Department
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 
